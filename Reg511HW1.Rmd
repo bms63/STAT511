@@ -1,0 +1,95 @@
+---
+title: "Reg511HW1"
+author: "Ben Straub"
+date: "August 26, 2015"
+output: html_document
+---
+
+1. For the following matrices, find the desired quantities. You may either do this by hand or using R. See
+the ”IntroToR.r” code for some examples.
+install.packages("matrixcalc")
+```{r, echo=TRUE, results='hide'}
+library(matrixcalc)
+
+A = matrix(
+  c(1, 3, -1, 9, 5, -2, -1, -1, 2, 2, -3, 1),
+  nrow = 4,
+  ncol = 3)
+A
+
+b = matrix(
+  c(2, 1, -1),
+  nrow = 3,
+  ncol = 1
+)
+b
+
+
+```
+
+(a) A*b
+```{r, echo=TRUE}
+A%*%b
+```
+
+(b) b`b
+```{r, echo=TRUE}
+bT<- t(b)
+bT%*%b
+```
+
+(c) bb`
+```{r, echo=TRUE}
+bT<- t(b)
+b%*%bT
+```
+
+(d) A`A
+```{r, echo=TRUE}
+AT<- t(A)
+AT%*%A
+```
+
+(e) trace(A`A)
+```{r, echo=TRUE}
+AT<- t(A)
+e <- AT%*%A
+matrix.trace(e)
+```
+
+(f) (A`A)^-1
+```{r, echo=TRUE}
+AT<- t(A)
+e <- AT%*%A
+solve(e)
+```
+
+
+##########      6   ##################
+```{r, echo=TRUE}
+set.seed(6)
+x <- rnorm(100, mean = 1, sd = 2)
+y <- rnorm(100, mean = -3, sd = 1)
+
+mean(x)
+mean(y)
+
+var(x)
+var(y)
+
+z <- x - y
+
+mean(z)
+var(z)
+```
+(a)  *The sample mean for x is 0.9795865, which is within 0.02 of the theoretical mean, 1.    
+     *The sample mean for y is -3.08893, which is within 0.09 of the   
+     theoretical mean, -3.  
+     *The sample variance for x is 4.272303, which is within 0.27 of the 
+     theoretical variance, 4.
+     *The sample variance for x is 4.272303, which is within 0.27 of the     
+     theoretical variance, 4.
+     
+(b)  *The sample mean for z is 4.068516, which is within .069 of the     
+     theoretical mean, 4.
+     *The sample variance for z is 4.387706, which is 0.612 of the theoretical      mean, 5

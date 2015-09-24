@@ -1,0 +1,769 @@
+---
+title: "Homework 2"
+author: "Ben Straub"
+date: "September 21, 2015"
+output: pdf_document
+---
+
+
+## (1) Let y ~ Binomial(n, p) for i = 1, 2, ... m be independent binomial random variables.
+
+```{r kable, echo=FALSE, comment=NA}
+n <- c(29, 53, 61, 62, 51, 62, 53, 49, 71, 26)
+y <- c(18, 31, 34, 33, 27, 33, 28, 23, 33, 12)
+
+pretty = rbind(n, y)
+print(pretty, row.names=F)
+```
+
+```{r, echo=FALSE, results='hide'}
+## first create a sequence of candidate "p" values
+p.vals=seq(.01,.99,.001)
+n.p=length(p.vals)
+p.vals
+n.p
+
+## create a placeholder vector to store the likelihood values 
+lik.vals=rep(NA,n.p)
+
+## calculate the likelihood function for each "p" value in p.vals
+for(i in 1:n.p){
+  lik.vals[i] <- prod(dbinom(y,n,p.vals[i]))
+}
+```
+
+### The MLE Esitmator is below:
+
+```{r, echo=FALSE}
+## find the "p" which maximizes the likelihood function
+max.p.idx=which.max(lik.vals)
+max.p=p.vals[max.p.idx]
+max.p
+```
+
+```{r, echo=FALSE}
+## Plot
+plot(p.vals,lik.vals, main = "Likelihood Function", ylab="")
+abline(v=max.p,col="red",lwd=2)
+
+```
+
+\pagebreak
+
+#(3) Simple Linear Regression: Car Stopping Distance
+
+# Exploratory Data Analysis
+
+## Six Number Summary for Distance and Speed
+
+```{r, comment=NA, echo=FALSE}
+
+data(cars)
+#library(reshape)
+#new_cars <- rename(cars, c(speed="Speed"))
+#new_cars <- rename(cars, c(dist="Distance"))
+
+summary(cars)
+```
+
+#### _OBSERVATIONS:_ 
+- The data set cars has two variables: Speed and Distance.
+- 50 observations
+- The Mean (15.4) and Median (15) for _Speed_ are close together indicating a Normal Distribution
+- The Min and Max for _Speed_ are 4 and 25
+- For the _Distance_ Variable its Mean (42.68) is greater than its Median (36) indicating a postitive skewed distribution of data.
+- The Min and Max for _Distance_ are 2 and 120
+
+## Boxplots of Speed and Distance
+
+```{r, echo=F}
+
+par(mfrow=c(1,2))
+boxplot(cars$speed,data=cars, main = "Speed")
+boxplot(cars$dist,data=cars, main = "Distance")
+```
+
+#### _OBSERVATIONS:_ 
+- The Distance variable has one outlier in it.
+- You can see the postive skewness of the _Distance_ Variable in its BoxPlot.
+- The Distance data is more clustered around the lower quartiles and the Median.
+
+## Histograms of Speed and Distance
+
+```{r, echo=F}
+
+par(mfrow=c(2,2))
+x=cars$speed
+y=cars$dist
+hist(x, main = "Speed", xlab="", ylab="")
+hist(y, main = "Distance", xlab="", ylab="")
+```
+
+#### _OBSERVATIONS:_ 
+- _Speed_ still exhibits a Normal Distribution, but has a slight left skewness
+- _Distance_ still exhibits its positive skewness.
+
+## Pairwise Plots of Cars Data
+
+```{r, echo=F}
+pairs(cars)
+```
+
+#### _OBSERVATIONS:_ 
+- The relatioship between Speed and Distance has a postivie correlation, which makes sense.  The faster you drive the greater the distance it will take you to stop.
+- The data shown in pairwise plots shows a non-linear relationship
+
+## Regression Line with Distance as a function of Speed
+
+```{r, echo=F}
+# Creating Regression line for Data
+fit=lm(dist~speed,data=cars)
+
+plot(cars$speed,cars$dist, xlab = "Speed (mph)", ylab = "Stopping Distance (ft)", las = 1)
+
+abline(fit, col="red")
+
+```
+
+## Coefficients for Linear Model
+
+```{r, echo=F, comment=NA}
+fit$coef
+```
+
+#### _Simple Linear Regression Equation:_  $$ y = 17.58 + 3.93SPEED $$
+
+##Residuals, QQ-Plot and checking for Heteroscadacity
+
+```{r, echo=F, results='hide', comment=NA}
+
+# Histograms of Residuals with Normal Curve overlay
+summary(fit)
+```
+
+<!--  Residuals with Normal Curve overlay, QQ and Hetero --> 
+
+```{r, echo=F, comment=NA}
+
+# Histograms of Residuals with Normal Curve overlay
+par(mfrow=c(1,3))
+
+res=fit$resid
+m <- mean(res)
+std <- sqrt(var(res))
+hist(res, prob=TRUE, main = "Histogram of Residuals")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+qqnorm(res)
+qqline(res,col="green")
+
+yhat=fit$fitted.values
+# plot(res~cars$Speed)
+# plot(res~cars$Distance)
+plot(res~yhat, main = "Check for Heteroscadacity")
+abline(h=0,col="blue")
+curve(x^2/150, add=TRUE, col="red")
+curve(-x^2/150, add=TRUE, col="red")
+
+```
+
+### Possible Violations of Modeling Assumptions
+
+- A Linear Model should exhibit non-constant error variance in its residuals.
+- We examine the following:
+1. The Histogram of the residuals shows a possible Normal Distribution, but has right skewness in it.
+2. The tails of the QQ Plots shows that the residuals are not obeying the Theoretical Quantiles
+4. The last plot is the residuals plotted against the yhats.  The residuals should show up as constant error varaince, but exhibit non-constant error variance.  You can see a slight trumpet shape in the graph with the red graph lines as a visual aid.
+
+#### _CONCLUSION_ 
+- Based on the 3 above residuals graphs we can conclude that the current model violates our Linear Model Assumptions, we can conclude then that the current linear model is not the best fit for the cars data.
+
+# Transforming cars data to a Log-Linear Model
+
+```{r, echo=FALSE, comment=NA}
+
+######### Start Log Model
+fit.lg=lm(log(dist)~log(speed),data=cars)
+fit.lg$coef
+
+```
+
+#### _Simple Log-Linear Regression Equation:_  $$ y = 0.73 + 1.6log(Speed) $$
+
+## Comparison of Log-Linear to Linear Regression
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(2,2))
+## plot data, response varialbe is stopping Distance, predictor is Speed
+plot(log(cars$speed),log(cars$dist), xlab = "log(Speed (mph))", ylab = "log(Stopping Distance (ft))", las = 1, main = "Log-Linear Model")
+## Regression Line
+abline(fit.lg, col="red")
+#########  Previous Model used for comparison
+fit=lm(dist~speed,data=cars)
+## plot data, response varialbe is stopping Distance, predictor is Speed
+plot(cars$speed,cars$dist, xlab = "Speed (mph)", ylab = "Stopping Distance (ft)",las = 1, main = "Linear Model")
+## Regression Line
+abline(fit, col="red")
+
+```
+
+#### _OBSERVATION:_   The transformation of the data to a LogLinear model does not seems to provide a better fit.  We will compare histograms, qqplots and heteroscadacity plots of the residuals to see if one is better visual fit than the other.
+
+## Comparison of Residuals of Linear, Log and Theoretical Models
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(2,3))
+
+#### Linear Model
+m <- mean(res)
+std <- sqrt(var(res))
+hist(res, prob=TRUE, main = "Linear Residuals", xlab="", ylab="")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+#### LogLinear Model
+res.lg=fit.lg$resid
+m <- mean(res.lg)
+std <- sqrt(var(res.lg))
+hist(res.lg, prob=TRUE, main = "LogL Residuals", xlab="", ylab="")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+```
+
+#### _OBSERVATION:_  The histogram of the residuals for the Log-Linear model appears to have a "better" normal distribution than the original Linear Model.
+
+## Comparison of QQ-Plots
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(2,3))
+
+qqnorm(res, main = "Linear Model")
+qqline(res,col="green")
+
+qqnorm(res.lg, main = "LogL Model")
+qqline(res.lg,col="green")
+
+```
+
+#### _OBSERVATION:_  It is difficult to make any meaninful observations of the QQ-plots for LogLinear and Linear Models.  However, the Log Model does seem to hug the theoretical quantiles more than the Linear.
+
+## Check for Heteroscadacity
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(2,2))
+yhat.lg=fit.lg$fitted.values
+
+plot(res~yhat, main = "Linear Model")
+abline(h=0,col="blue")
+
+plot(res.lg~yhat.lg, main = "LogLinear Model")
+abline(h=0,col="blue")
+
+```
+
+#### _OBSERVATION:_  The Log-Linear model exhibits non-constant error variance.
+
+### _CONCLUSION:_ The Log-Linear model is not a good fit for the data.
+
+## Transformation into Polynomial Model of Degree 3
+
+```{r, echo=FALSE, comment=NA, error=FALSE}
+fit.poly=lm(dist~speed+I(speed^2)+I(speed^3),data=cars)
+## estimates of regression parameters
+fit.poly$coef
+```
+
+#### _Polynomial Regression Equation:_  $$ y = -19.51 + 6.80Speed + -0.35Speed^2 + 0.01Speed^3 $$
+
+### Graph of Polynomial Component Residuals
+
+```{r, echo=FALSE, comment=NA, error=FALSE}
+par(mfrow=c(1,4))
+library(car)
+crPlots(fit.poly)
+```
+
+### Residuals of Polynomial Model
+
+```{r, echo=FALSE, comment=NA, error=FALSE}
+## residuals
+par(mfrow=c(2,2))
+res=fit.poly$resid
+hist(res, main = "Histogram of Residuals")
+
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit.poly$fitted.values
+plot(yhat,res, main = "Check for Heteroscadacity")
+abline(h=0,col="blue")
+
+```
+
+#### _OBSERVATIONS/CONCLUSION:_ 
+- I couldn't get the Polynomial Regression to appear :( :(
+- The Histogram of the Residuals is right skewed
+- Heteroscadacity is still present in the residuals
+- The Polynomial Transformation is not a good model fit.
+-  I explored three model fits for the cars data: Linear, Log-Linear and Polynomial of degree 3.  However, I was unable to find a good model fit for the data. 
+
+\pagebreak
+
+# (4)Model Apartment rent in Munich 
+
+## Exploratory Data Analysis
+
+```{r, echo=FALSE, comment=NA} 
+library(reshape)
+setwd("/Users/benStraub/Desktop/STAT511")
+Munich = read.csv("rent99.raw", sep="")
+new_Munich <- Munich[,c(1,2,3,4)]
+new_Munich <- rename(new_Munich, c(area = "Area"))
+new_Munich <- rename(new_Munich, c(rent = "Rent"))
+new_Munich <- rename(new_Munich, c(yearc = "Yearc"))
+
+summary(new_Munich)
+```
+
+## Boxplots of Munich Data Variables
+
+```{r, echo=F}
+
+par(mfrow=c(1,4))
+boxplot(Munich$rent,data=Munich, main = "Rent")
+boxplot(Munich$rentsqm,data=Munich, main = "Rent/Square Meter")
+boxplot(Munich$area,data=Munich, main = "Area")
+boxplot(Munich$yearc,data=Munich, main = "Year Apt was Built")
+
+```
+
+#### **OBSERVATIONS:**
+- Area has a lot of outliers after the Max
+- Rent has a lot of outliers after the Max
+- Boxplots shows Year that apartment was constructed.  It is skewed to the right  It looks like the bulk of the apartments were built in the 1960s to the 1970s.
+- Rent per square meter has outliers after the max.
+
+## Histograms of Munich Data
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+raw_area=Munich$area
+m <- mean(raw_area)
+## Mean squared Error
+std <- sqrt(var(raw_area))
+hist(raw_area, prob=TRUE, xlab = "Area", ylab ="", main = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+raw_Rent=Munich$rent
+m <- mean(raw_Rent)
+## Mean squared Error
+std <- sqrt(var(raw_Rent))
+hist(raw_Rent, prob=TRUE, xlab = "Rent", ylab ="", main = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+raw_Yearc=Munich$yearc
+m <- mean(raw_Yearc)
+## Mean squared Error
+std <- sqrt(var(raw_Yearc))
+hist(raw_Yearc, prob=TRUE, xlab = "Year Constructed", ylab ="", main = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+raw_rentsqm=Munich$rentsqm
+m <- mean(raw_rentsqm)
+std <- sqrt(var(raw_rentsqm))
+hist(raw_rentsqm, prob=TRUE, xlab = "Rent per Sq Meter", ylab ="", main = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+```
+
+#### **OBSERVATIONS:**
+- Area and Rent have asymmetric distributions with a positive skew
+- Year Constructed is highly irregular and multimodal
+- Rent per Square Meter has a Normal-like Distribution
+
+## Pairwise Plots of Munich Data
+
+```{r, echo=F, comment=NA}
+par(mar = rep(2, 4))
+new_Munich <- Munich[,c(1,2,3,4)]
+new_Munich <- rename(new_Munich, c(area = "Area"))
+new_Munich <- rename(new_Munich, c(rent = "Rent"))
+new_Munich <- rename(new_Munich, c(yearc = "Yearc"))
+pairs(new_Munich)
+```
+
+#### **OBSERVATIONS:**
+- There is a relationship between Rent and Rent per square meter
+- There is a relationship between Rent and Area
+- I can not discern any other relationships.
+
+<!--  BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB --> 
+
+<!--  ############BEGIN LINEAR MODEL################### --> 
+
+# (b) Fit the Linear Regression Model
+
+```{r, echo=F, comment=NA, results="hide"}
+fit.Mun=lm(rent~area+yearc,data=Munich)
+```
+
+## Coefficients of Model
+
+```{r, echo=F, comment=NA}
+fit.Mun$coef
+```
+
+$$ y = -4775.59 + 5.36AREA + 2.49YEARc $$
+
+## Examination of Model Residuals
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+res=fit.Mun$resid
+m <- mean(res)
+std <- sqrt(var(res))
+hist(res, prob=TRUE, main = "Residuals", ylab ="", xlab = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit.Mun$fitted.values
+plot(yhat,res, main = "Fitteds against Residual ")
+abline(h=0, col="red")
+curve(x^2/1000, add=TRUE, col = "blue")
+curve(-x^2/1000, add=TRUE, col = "blue")
+
+```
+
+#### **OBSERVATIONS:**
+- The Histogram of the Residuals looks like a Normal Distribution with a slight right skew.
+- The Fitteds against the Residuals show non-constant error variance.  The blue lines as a visual aid we can see a slight trumpet in the data.
+- The current linear regression model has violations in its construction.
+
+## Examination of Partial Residuals
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+## plot residuals vs each covariate (check for heteroscedasticity and nonlinearity)
+plot(Munich$area,res, main = "Area against Residuals")
+abline(0,0,col="red")
+plot(Munich$yearc,res, main = "YearC against Residuals")
+abline(0,0,col="red")
+```
+
+##### **OBSERVATIONS:**
+- The variable Area plotted against the Residuals shows heteroscadacity
+- Year Constructed has some interesting things going on.  There are some gaps in the data, which can be attributed to Post-WWI chaos and the events of WWII.
+- The Year Conctructed data still shows heteroscadacity, but it is weak.
+
+<!-- ## Partial Residual Plots
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,4))
+## partial residual plots (requires the "car" package)
+library(car)
+crPlots(fit.Mun)
+## partial residual plots using prp.r
+## (put "prp.r" in your R working directory, or copy/paste it into R)
+source("prp.r")
+prp(fit.Mun,Munich,names=c("area","yearc"))
+## QQ-plot of residuals (check normality)
+
+```
+-->
+
+## Quantiles Plot of Linear Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+qqnorm(res)
+qqline(res)
+```
+
+
+##### **OBSERVATIONS:**
+- We see the sample quantiles plotted against the theoretical quantiles have tails.  This indicates a violation of the linear model assumptions.
+
+<!--  CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC --> 
+
+<!--  ############BEGIN LOG_LINEAR MODEL################### --> 
+
+# (c) Fit the Log Model
+
+```{r, echo=F, comment=NA}
+fit.log.Mun=lm(log(rent)~area+yearc,data=Munich)
+fit.log.Mun$coef
+```
+
+## Coefficients of Log Model
+
+```{r, echo=F, comment=NA}
+fit.log.Mun$coef
+```
+
+$$ log(rent) = -6.64 + 0.011AREA + 0.01YEARc $$
+
+## Examination of Residuals of Log Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+res.log=fit.log.Mun$resid
+m <- mean(res.log)
+std <- sqrt(var(res.log))
+hist(res.log, prob=TRUE, main = "Residuals", ylab ="", xlab = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit.log.Mun$fitted.values
+plot(yhat,res.log, main = "Fitteds against Residual ")
+abline(h=0, col="red")
+```
+
+#### **OBSERVATIONS:**
+- The Histogram of the Residuals looks like a Normal Distribution with a slight negative skew.
+- The fitteds against the Residuals show non-constant error variance.
+- Our new log model residuals shows it violates our linear model assumptions.
+
+## Examination Partial Residuals of Log Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+## plot residuals vs each covariate (check for heteroscedasticity and nonlinearity)
+plot(Munich$area,res.log, main = "Area against Residuals")
+abline(0,0,col="red")
+plot(Munich$yearc,res.log, main = "YearC against Residuals")
+abline(0,0,col="red")
+```
+
+##### **OBSERVATIONS:**
+- The variable Area plotted against the Residuals shows heteroscadacity
+- Year Constructed has some interesting things going on.  There are some gaps in the data, which can be attributed to Post-WWI chaos and WWII, but again it has a heteroscadastic shape.
+
+<!-- ## Partial Residual Plots of Log Model
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,4))
+## partial residual plots (requires the "car" package)
+library(car)
+crPlots(fit.log.Mun)
+## partial residual plots using prp.r
+## (put "prp.r" in your R working directory, or copy/paste it into R)
+source("prp.r")
+prp(fit.log.Mun,Munich,names=c("area","yearc"))
+## QQ-plot of residuals (check normality)
+```
+-->
+
+##### **OBSERVATIONS:**
+
+## Quantiles Plots of Log Model vs Linear Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+qqnorm(res.log, main="Log Model")
+qqline(res.log)
+
+qqnorm(res, main="Linear Model")
+qqline(res)
+```
+
+##### **OBSERVATIONS:**
+- The upper qauntile samples become tighter on the theoretical model, but the lower quantiles samples become even worse than the previous linear model.
+
+<!--  DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD --> 
+
+<!--  ############BEGIN RENTSQM MODEL################### --> 
+
+# (d) Use RentSQM instead of Rent
+
+```{r, echo=F, comment=NA}
+fit.rs.Mun=lm((rentsqm)~area+yearc,data=Munich)
+```
+
+## Coefficients of RentSqm Model
+
+```{r, echo=F, comment=NA}
+fit.rs.Mun$coef
+```
+
+$$ rentsqm = -61.06 + -0.027AREA + 0.036YEARc $$
+
+## Examination of Residuals of RentSqm Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+res.sqm=fit.rs.Mun$resid
+m <- mean(res.sqm)
+std <- sqrt(var(res.sqm))
+hist(res, prob=TRUE, main = "Residuals", ylab ="", xlab = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit.rs.Mun$fitted.values
+plot(yhat,res.sqm, main = "Fitteds against Residual ")
+abline(h=0, col="red")
+curve(-x^2/10, add=TRUE, col="blue", lwd=3)
+```
+
+#### **OBSERVATIONS:**
+- The Histogram of the Residuals look Normal
+- The Fitted plotted against the Residuals above zero look close to homoscadastic, but the residuals below zero show a relationship with the blue line as a visual guide.
+
+
+## Examination Partial Residuals of Rentsqm Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,2))
+## plot residuals vs each covariate (check for heteroscedasticity and nonlinearity)
+plot(Munich$area,res.sqm, main = "Area against Residuals", xlab="", ylab="")
+abline(0,0,col="red")
+plot(Munich$yearc,res.sqm, main = "YearC against Residuals", xlab="", ylab="")
+abline(0,0,col="red")
+```
+
+##### **OBSERVATIONS:**
+- We again see the Area's Residuals showing non-constant error variance
+- The variable YearC's Residuals does show some homoscadastic likeness, but you can see gaps in the data due to events in history and also boom times in building, e.g. the Roaring 20's.
+
+<!-- ## Partial Residual Plots of Rentsqm Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+## partial residual plots (requires the "car" package)
+library(car)
+crPlots(fit.rs.Mun)
+## partial residual plots using prp.r
+## (put "prp.r" in your R working directory, or copy/paste it into R)
+source("prp.r")
+prp(fit.rs.Mun,Munich,names=c("area","yearc"))
+## QQ-plot of residuals (check normality)
+```
+-->
+
+## Quantiles Plots of Rentsqm Model with Comparison
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,3))
+
+qqnorm(res.sqm, main= "RentSqm")
+qqline(res.sqm)
+
+qqnorm(res.log, main="Log Model")
+qqline(res.log)
+
+qqnorm(res, main="Linear Model")
+qqline(res)
+```
+
+##### **OBSERVATIONS:**
+- The RentSQM model's sample quantiles does show a tighter grip than the previous two models.  However, we still do not have our most ideal Linear Model as it does violate our modeling assumption of homoscadastic residuals.
+
+<!--  EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE --> 
+
+<!--  ############BEGIN A&Y Function MODEL################### --> 
+
+# (e) Model with Area and YearC as Functions
+
+```{r, echo=F, comment=NA}
+fit.e.Mun=lm((rentsqm)~I(1/area)+yearc+I(yearc^2)+I(yearc^3),data=Munich)
+```
+
+## Coefficients of Function Model
+
+```{r, echo=F, comment=NA}
+fit.e.Mun$coef
+```
+
+#### _OBSERVATION_ 
+- For my Function Model, I used the Inverse of the Area Variable and I used a Polynomial of Degree 3 for YEARC.
+
+$$ rentSQM = 29419 + 129.57(1/AREA) + -43.3YEARc + 0.02YEARc^2 + -3.4e-06YEARc^3$$
+
+## Examination of Residuals of Function Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+
+res.e=fit.e.Mun$resid
+m <- mean(res.e)
+std <- sqrt(var(res.e))
+hist(res, prob=TRUE, main = "Residuals", ylab ="", xlab = "")
+curve(dnorm(x, mean=m, sd=std), 
+          col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit.e.Mun$fitted.values
+plot(yhat,res.e, main = "Fitteds against Residual ")
+abline(h=0, col="red")
+```
+
+#### **OBSERVATIONS:**
+The Function Model's Residuals in our histogram show a Normal-like Distribution, but when the Residuals are plotted against the Fitted Values we see non-constant error variances, which violates our Linear Model Assumptions
+
+## Examination of Partial Residuals of Function Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,2))
+## plot residuals vs each covariate (check for heteroscedasticity and nonlinearity)
+plot(Munich$area,res.e, main = "Area against Residuals", xlab="Area", ylab="")
+abline(0,0,col="red")
+plot(Munich$yearc,res.e, main = "YearC against Residuals", xlab="YearC", ylab="")
+abline(0,0,col="red")
+```
+
+##### **OBSERVATIONS:**
+- Violations of the Linear Model still exist in our new Function Model.
+- Both Variables' Residuals show heteroscadacity.
+
+<!-- ## Partial Residual Plots of Function Model
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(2,4))
+## partial residual plots (requires the "car" package)
+library(car)
+crPlots(fit.e.Mun)
+## partial residual plots using prp.r
+## (put "prp.r" in your R working directory, or copy/paste it into R)
+source("prp.r")
+prp(fit.e.Mun,Munich,names=c("area","yearc"))
+## QQ-plot of residuals (check normality)
+```
+-->
+
+\pagebreak 
+
+## Quantiles Plots of Function Model with Comparison
+
+```{r, echo=F, comment=NA}
+par(mfrow=c(1,2))
+qqnorm(res.e, main="Function Model")
+qqline(res.e)
+
+qqnorm(res.sqm, main= "RentSqm Model")
+qqline(res.sqm)
+
+qqnorm(res.log, main="Log Model")
+qqline(res.log)
+
+qqnorm(res, main="Linear Model")
+qqline(res)
+```
+
+##### **OBSERVATIONS:**
+- The Function Models QQ-Plot shows a tighter bound to the theoretical quantiles.
+
+### _CONCLUSION_
+- I am unable to discern any meaningful relationship with my new function model and its relationsip to its variables on inspection of its parameters. 
+- However, the fact that the my new Function Model has a tighter bound to its theoretical quantiles than the three other models leads me to believe that it is our strongest model so far.  
+- The transformation of the model into a Function Model with Area as an Inverse of Area and YearC as a polynomial of degree 3 has shown to be the strongest model in our investigation.
+- However, all four models we investigated have residuals that are heteroscadastic, which violates our Linear Model with constant error variance.
+- I would choose the original Linear model to explain Munich rent.  It has violations of the Linear Model, but it has the easiest explanation of the response variable (Rent) with its explanatory variables (Area and YearC).
