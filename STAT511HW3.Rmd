@@ -1,0 +1,120 @@
+---
+title: "STAT511 HW3"
+author: "Ben Straub"
+date: "September 26, 2015"
+output: pdf_document
+---
+
+# (4) Olympic 100m Gold Medal Times
+
+```{r, results=FALSE, echo=FALSE}
+setwd("/Users/benStraub/Desktop/STAT511")
+oly = read.csv("Olympics (1).csv", sep=",")
+#Strips out extraneous columns
+oly<- oly[c(-4,-5)]
+```
+
+# Exploratory Data Analysis
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(1,2))
+
+str(oly)
+boxplot(oly$goldtime)
+boxplot(oly$goldtime ~ oly$gender)
+
+male_oly <- oly[ which(oly$gender=='M'), ]
+female_oly <- oly[ which(oly$gender=='W'), ]
+```
+
+# Six Number Summary seperated by gender
+
+```{r, echo=FALSE, comment=NA}
+summary(male_oly)
+summary(female_oly)
+```
+
+# Summary of Model
+
+```{r, echo=FALSE, comment=NA}
+fit = lm(goldtime~year,data=oly)
+summary(fit)
+```
+
+Coefficients of Model
+```{r, echo=FALSE, comment=NA}
+fit$coef
+```
+
+<!-- ## _Fitted Model:_    $$ goldtime = 26.664 + -0.008year $$ -->
+
+#  Year and Goldtime
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+plot(oly$year, oly$goldtime, xlab="Year", ylab ="Gold Time")
+xvals=data.frame(year=seq(1900, 2004,by=4))
+plot(oly$year, oly$goldtime, xlab="Year", ylab ="Gold Time")
+yvals=predict(fit,xvals)
+## plot regression line
+points(xvals$year,yvals,type="l",col="purple",lwd=3)
+```
+
+```{r, echo=FALSE, comment=NA}
+## residuals
+par(mfrow=c(1,1))
+res=fit$resid
+hist(res)
+```
+
+#### _OBSERVATION:_ The histogram of the residuals has a bimodal distribution, which indicates we have two diffegoldtime groups.
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(1,2))
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit$fitted.values
+plot(yhat, res, main = "No Split of Data")
+abline(h=0, col ="blue")
+plot(yhat,res,col=factor(oly$gender),pch=20,cex=2, main="Split by Gender")
+abline(h=0, col ="blue")
+
+#Check for Normality
+qqnorm(res)
+qqline(res)
+```
+
+##  The current goldtime model is not a good fit for the data.  We can see that the Histogram of the Residuals has a bimodal distributions, which indicates two distinct groups in the data. The Residuals plotted against yhats indicates heteroscadacity.  If we color code based on gender we can see an obvious split of the data into two distinct groups.
+
+##  The gold time for each race goes down by 0.011 for each Olympic Year.
+
+# NEW MODEL with Year and Gender As an Interaction Effect
+
+```{r, echo=FALSE, comment=NA}
+fit=lm(goldtime~year*factor(gender),data=oly)
+summary(fit)
+
+beta.hat=fit$coeff
+beta.hat
+##
+## plotting interaction effect
+##
+plot(oly$year,oly$goldtime,pch=24,col=oly$gender, xlab="Year", ylab="Goldtime")
+abline(beta.hat[1],beta.hat[2],lwd=5)
+abline(beta.hat[1]+beta.hat[3],beta.hat[2]+beta.hat[4],lwd=5,col=2)
+```
+
+## How do we write the model??
+
+## We have broken up the data by the variable gender.  The lines for each corresponding variable are a much better fit, then the previous regression line where gender was not incorporated.
+
+```{r, echo=FALSE, comment=NA}
+yhat=fit$fitted
+res=fit$res
+plot(yhat,res,col=oly$gender,pch=20,cex=2)
+abline(h=0, col="blue", lwd=3)
+
+```
+
+##  Anything of note in the residuals plotted against the yhats????
+
+##  How do I figure out prediction using the regression line?

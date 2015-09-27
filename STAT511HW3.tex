@@ -1,0 +1,181 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+    \usepackage{xltxtra,xunicode}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \newcommand{\euro}{€}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+\fi
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={Ben Straub},
+            pdftitle={STAT511 HW3},
+            colorlinks=true,
+            citecolor=blue,
+            urlcolor=blue,
+            linkcolor=magenta,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\setcounter{secnumdepth}{0}
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+  \title{STAT511 HW3}
+  \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+  \author{Ben Straub}
+  \preauthor{\centering\large\emph}
+  \postauthor{\par}
+  \predate{\centering\large\emph}
+  \postdate{\par}
+  \date{September 26, 2015}
+
+
+
+\begin{document}
+
+\maketitle
+
+
+\section{(4) Olympic 100m Gold Medal
+Times}\label{olympic-100m-gold-medal-times}
+
+\section{Exploratory Data Analysis}\label{exploratory-data-analysis}
+
+\begin{verbatim}
+'data.frame':   42 obs. of  3 variables:
+ $ year    : int  1900 1904 1908 1912 1920 1924 1928 1932 1936 1948 ...
+ $ goldtime: num  11 11 10.8 10.8 10.8 10.6 10.8 10.3 10.3 10.3 ...
+ $ gender  : Factor w/ 2 levels "M","W": 1 1 1 1 1 1 1 1 1 1 ...
+\end{verbatim}
+
+\includegraphics{STAT511HW3_files/figure-latex/unnamed-chunk-2-1.pdf}
+
+\section{Six Number Summary seperated by
+gender}\label{six-number-summary-seperated-by-gender}
+
+\begin{verbatim}
+      year         goldtime      gender
+ Min.   :1900   Min.   : 9.840   M:24  
+ 1st Qu.:1927   1st Qu.: 9.982   W: 0  
+ Median :1958   Median :10.275         
+ Mean   :1954   Mean   :10.318         
+ 3rd Qu.:1981   3rd Qu.:10.650         
+ Max.   :2004   Max.   :11.000         
+\end{verbatim}
+
+\begin{verbatim}
+      year         goldtime     gender
+ Min.   :1928   Min.   :10.54   M: 0  
+ 1st Qu.:1953   1st Qu.:10.95   W:18  
+ Median :1970   Median :11.07         
+ Mean   :1969   Mean   :11.23         
+ 3rd Qu.:1987   3rd Qu.:11.50         
+ Max.   :2004   Max.   :12.20         
+\end{verbatim}
+
+\section{Summary of Model}\label{summary-of-model}
+
+\begin{verbatim}
+
+Call:
+lm(formula = goldtime ~ year, data = oly)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.6976 -0.5089 -0.2196  0.4869  1.2269 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 26.663985   5.865382   4.546 4.97e-05 ***
+year        -0.008138   0.002991  -2.721   0.0096 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.5679 on 40 degrees of freedom
+Multiple R-squared:  0.1561,    Adjusted R-squared:  0.135 
+F-statistic: 7.401 on 1 and 40 DF,  p-value: 0.0096
+\end{verbatim}
+
+Coefficients of Model
+
+\begin{verbatim}
+ (Intercept)         year 
+26.663984630 -0.008138418 
+\end{verbatim}
+
+\subsection{\emph{Fitted Model:}
+\[ goldtime = 26.664 + -0.008year \]}\label{fitted-model-goldtime-26.664--0.008year}
+
+\section{Year and Goldtime}\label{year-and-goldtime}
+
+\includegraphics{STAT511HW3_files/figure-latex/unnamed-chunk-6-1.pdf}
+
+\includegraphics{STAT511HW3_files/figure-latex/unnamed-chunk-7-1.pdf}
+\includegraphics{STAT511HW3_files/figure-latex/unnamed-chunk-7-2.pdf}
+\includegraphics{STAT511HW3_files/figure-latex/unnamed-chunk-7-3.pdf}
+
+\subsection{The current model is not a good fit for the data. We can see
+that the Histogram of the Residuals have a multimodal distributions and
+Residuals sorta look like that got some homoscadacity, but when we split
+by gender we see some
+issues.}\label{the-current-model-is-not-a-good-fit-for-the-data.-we-can-see-that-the-histogram-of-the-residuals-have-a-multimodal-distributions-and-residuals-sorta-look-like-that-got-some-homoscadacity-but-when-we-split-by-gender-we-see-some-issues.}
+
+\subsection{The gold time for each race goes done by 0.011 for each
+Olympic
+Year.}\label{the-gold-time-for-each-race-goes-done-by-0.011-for-each-olympic-year.}
+
+\section{NEW MODEL with Year and
+Gender}\label{new-model-with-year-and-gender}
+
+\end{document}
