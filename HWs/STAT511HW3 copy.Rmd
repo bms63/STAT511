@@ -1,0 +1,278 @@
+---
+title: "STAT511 HW3"
+author: "Ben Straub"
+date: "September 26, 2015"
+output: pdf_document
+---
+
+# (3) Patricle Displacement
+
+```{r, results=FALSE, echo=FALSE}
+setwd("/Users/benStraub/Desktop/STAT511")
+fluid = read.csv("fluid.csv", sep=",")
+```
+
+# Exploratory Data Analysis of Fluid Data
+
+### Summary of Fluid Data
+
+```{r, results='hide', echo=FALSE}
+str(fluid)
+```
+
+## The Fluid Data has 800 observations and 2 variables.
+
+```{r, results='asis', echo=FALSE}
+library(knitr)
+kable(summary(fluid), digits=2)
+```
+
+## Boxplots and XY-Plot of Fluid Data
+
+```{r, results = "asis", echo=FALSE}
+par(mfrow=c(1,2))
+boxplot(fluid$x~fluid$t, main="Displace split by Time")
+
+y <- (fluid$x)^2
+x <- fluid$t
+plot(x, y, xlab="Time", ylab="Displacement")
+```
+
+#### _Observation:_  
+* As the fluid data increases in time it becomes more spread out.
+* The Time Intervals are Discrete: 5, 10, 15, 20.
+
+# _SUMMARY OF MODEL_
+
+## _ORIGINAL MODEL EQUATION:_  
+
+$$ x^2 = \beta(t)^\beta \cdot \epsilon $$
+
+$$ \epsilon-lognormal(0, \sigma^2) $$
+
+## _MODEL TRANSFORMATION:_
+
+$$ log(x^2) = log(\beta_{0}) + \beta_{1}\cdot(log(t)) + log(\epsilon) $$
+
+
+```{r, results ='hide', echo=FALSE}
+xsqr <- (fluid$x)^2
+fit = lm(log(xsqr)~log(t), data=fluid)
+```
+
+## Estimated Coefficients of Model
+
+```{r, echo=FALSE, comment=NA}
+kable(summary(fit)$coef, digits=2)
+```
+
+## _INTERPRETATION OF THE PARAMETERS:_ 
+
+* Taking the log of the Researcher's Model turns our model into a linear model with log(lognormal) which become standard normal errors.  We can now investigate our assumptions of the Linear Model by checking the Model's Residuals using a histogram, QQ-plot and checking the residuals plotted against the yhats.
+* Gamma is our Beta Hat 0 in our Log-Linear Model.  The Gamma's value is 3.542
+* I have since learned that there is way more to Gamma's calculation...E[Error]*Gamma'value, but I'm not there so no dice.
+* Alpha is our Beta Hat One in our Log-Linear Model.  The Alpha's value is 0.9555
+
+## _RESIDUAL CHECK OF OUR MODEL_
+
+```{r, echo=FALSE, comment=NA}
+## residuals
+par(mfrow=c(1,2))
+res=fit$resid
+hist(res, main = "Histogram of Residuals")
+
+#Check for Normality
+qqnorm(res)
+qqline(res)
+```
+
+#### _OBSERVATIONS:_ 
+* The models residuals in the histogram are not in our sought-after Normal Distribution.
+* The model's QQ-plot has thick tailss, which indicates that we can find a better model to fit the data.
+
+## Residuals of the Data
+
+```{r, echo=FALSE, comment=NA}
+yhat=fit$fitted.values
+plot(yhat, res)
+abline(h=0, col ="blue")
+## plot(yhat,res,col=factor(oly$gender),pch=20,cex=2, main="Split by Gender")
+## abline(h=0, col ="blue")
+```
+
+### _CONCLUSION:_   
+* The models residuals plotted against its yhats shows non-constant error variance!
+* We got it all here of a Linear Model that violates our asssumptions of constant error variance .  We got heteroscadacity in our residuals , violations in the QQ plot and the Histogram of the residuals has some serious skewness in it.  Time to go back to the drawing board.
+
+<!-- ################################ --> <!-- ################################ -->
+<!-- ################################ --> <!-- ################################ -->
+<!-- ################################ --> <!-- ################################ -->
+
+# (4) Olympic 100m Gold Medal Times
+
+```{r, results=FALSE, echo=FALSE}
+setwd("/Users/benStraub/Desktop/STAT511")
+oly = read.csv("Olympics (1).csv", sep=",")
+#Strips out extraneous columns
+oly<- oly[c(-4,-5)]
+```
+
+
+# Exploratory Data Analysis of Olympics Data
+
+
+### The Olympic Data set has 42 observations with 3 variables: year, goldtime and gender.
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(1,2))
+
+boxplot(oly$goldtime)
+boxplot(oly$goldtime ~ oly$gender)
+
+male_oly <- oly[ which(oly$gender=='M'), ]
+female_oly <- oly[ which(oly$gender=='W'), ]
+```
+
+#### _OBSERVATIONS:_
+* Something fishy is going on here!!
+* The Women's Data and Men's Data do not match up and the Women's data is skewed towards the first Quartile in the boxplot.
+
+## Six Number Summary seperated by gender
+
+```{r, echo=FALSE, comment=NA}
+kable(summary(male_oly), digits=2, caption = 'MEN')
+kable(summary(female_oly), digits=2, caption = 'WOMEN')
+```
+
+# Summary of Model
+
+## Model Equation
+
+$$ goldtime = \beta + \beta_{i} \cdot year + \epsilon ~ N(0, \sigma^2) $$
+
+```{r, echo=FALSE, comment=NA}
+fit = lm(goldtime~year,data=oly)
+kable(summary(fit)$coef, digits=2)
+```
+
+### _Model Equation with Estimated Coefficients_
+
+$$ goldtime = 26.664 + -0.008year $$
+
+### _Interpretation:_  Every fourth year we see a decrease of 0.008 of time it takes to win the gold. 
+
+
+## Olympic Data with an Estimated Regression Line
+
+```{r, echo=FALSE}
+par(mfrow=c(2,2))
+plot(oly$year, oly$goldtime, xlab="Year", ylab ="Gold Time")
+xvals=data.frame(year=seq(1900, 2004,by=4))
+plot(oly$year, oly$goldtime, xlab="Year", ylab ="Gold Time")
+yvals=predict(fit,xvals)
+## plot regression line
+points(xvals$year,yvals,type="l",col="purple",lwd=3)
+```
+
+## Check of the Residuals of Model
+
+```{r, echo=FALSE, comment=NA}
+## residuals
+par(mfrow=c(1,2))
+res=fit$resid
+hist(res, main="Histogram of Residuals")
+
+#Check for Normality
+qqnorm(res)
+qqline(res)
+```
+
+
+#### _OBSERVATION:_ 
+* We have a bi-modal histogram of residuals!!!!!!
+* QQ-Plot has some tails to it, which indicates that the errors again do not follow a normal distribution.
+
+# Residuals plotted against yhats
+
+```{r, echo=FALSE, comment=NA}
+## fitted values (y.hat = E(y|X,beta.hat))
+yhat=fit$fitted.values
+plot(yhat, res, main = "No Split of Data")
+abline(h=0, col ="blue")
+plot(yhat,res,col=factor(oly$gender),pch=20,cex=2, main="Split by Gender")
+abline(h=0, col ="blue")
+```
+
+## CONCLUSION
+
+##  The current goldtime model is not a good fit for the data.  We can see that the Histogram of the Residuals has a bi-modal distributions, which indicates two distinct groups in the data. The Residuals plotted against yhats indicates heteroscadacity and if we color code based on gender we can see an obvious split of the data into two distinct groups.
+
+# NEW MODEL with Year and Gender As an Interaction Effect
+
+$$ goldtime = \beta_{0} + \beta_{1}year + \beta_{2}z + \beta \cdot year \cdot z $$
+
+### z is a either 0 for men or 1 for women
+
+* Not sure how to latex this yet!!  Sorry
+
+```{r, echo=FALSE,}
+fit=lm(goldtime~year*factor(gender),data=oly)
+kable(summary(fit)$coef, digits=3)
+```
+
+###  Our new model equation with coefficients is goldtime = 31.83 -0.011year + 12.52gender + -0.006gender*year
+
+```{r, results ='hide', echo=FALSE, comment=NA}
+beta.hat=fit$coeff
+beta.hat
+```
+
+```{r, echo=FALSE, comment=NA}
+
+##
+## plotting interaction effect
+##
+plot(oly$year,oly$goldtime,pch=24,col=oly$gender, xlab="Year", ylab="Goldtime")
+abline(beta.hat[1],beta.hat[2],lwd=5)
+abline(beta.hat[1]+beta.hat[3],beta.hat[2]+beta.hat[4],lwd=5,col=2)
+```
+
+## We have broken up the data by the variable gender.  The lines for each corresponding variable are a much better fit, then the previous regression line where gender was not incorporated.
+
+```{r, echo=FALSE, comment=NA}
+yhat=fit$fitted
+res=fit$res
+plot(yhat,res,col=oly$gender,pch=20,cex=2)
+abline(h=0, col="blue", lwd=3)
+
+```
+
+```{r, echo=FALSE, comment=NA}
+par(mfrow=c(1,2))
+res=fit$resid
+hist(res, main="Histogram of Residuals")
+
+#Check for Normality
+qqnorm(res)
+qqline(res)
+```
+
+##  _CONCLUSION_
+* The new model shows the residual errors having "better" constant error variance.  However, it still looks like two groups of residual errors...  
+* The histogram of the residuals has a better looking normal distribtuion than our previous model.  
+* The QQ-plot still has tails in it, but the data set is so small.
+* The New Model is an improvement from our last model, but we can still do better!
+
+###  Our new model equation is:
+
+$$ goldtime = 31.83 -0.011year + 12.52gender + -0.006gender*year $$
+
+# (4c)
+###  Our new model equation with estimated coefficients:
+
+$$ goldtime = 31.83 -0.011year + 12.52gender + -0.006gender*year $$
+
+* For Men: 31.826452523 + -0.011005562(1944) = 10.43164
+* For Women: 31.826452523 + -0.011005562(1944) + 12.520596237 - 0.006(1944)
+    = 11.28824
+* In 1944 the _men's_ goldtime would of been _10.432_ and the _women's_ goldtime would of been _11.28824_

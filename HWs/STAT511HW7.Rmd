@@ -1,0 +1,475 @@
+---
+title: "STAT511HW7"
+author: "Ben Straub"
+date: "November 18, 2015"
+output: pdf_document
+---
+
+
+```{r, echo=FALSE, results='hide'}
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+rm(list = ls())
+load("fire.Rdata")
+attach(fire)
+str(fire)
+```
+
+Severe wildfires in southern California in 2009 present a rare opportunity to study which factors influence whether a house near a forest is burned in a wildfire.  I will examine the data set, Fire, paying particular attention to six predictor variables that are under the control of the homeowner: planted, buildings, perc.woody, perc.cleared, distance2bush and distance2tree.  I will attemtp to make recommendations to homeowners, based on my analysis of the Fire data, to mitigate their chance of their home being burned down.
+
+# (1) EXPLORATORY AND VARIABLE SELECTION
+
+## EXPLORATORY DATA ANALYSIS
+
+```{r, echo=FALSE, results='hide'}
+sum(burnt)
+```
+
+_GENERAL OBSERVATIONS OF FIRE DATA_
+
+* The Total Data Set has 487 observations with 21 variables 
+* There are 274 homes that burned from this Survey
+* The Variables planted, adj.for.type are factor variables with two levels and 3 levels
+
+_OBSERVATIONS OF VARIABLES TO BE ADDRESSED IN STUDY_
+
+* The homeowners have control over the following variables for this study: planted, buildings, perc.woody, perc.cleared, distance2bush and distance2tree.  
+* These six variables will receive the most attention in the following analysis.
+* I looked at boxplots for each of the six variables, but found only Distance to Bushes and Distance to Trees to have any interesting features.
+* The boxplots show that the houses have a lot of bushes and trees around them, i.e. the distance is close to zero, but there are a significant amount of houses that have outliers associated with them.
+* I believe there is some sort of quadratic relationship between some of the variables in the data sets.  I am making this ovservations form subsetting the data and looking at its pairs plots.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+#hist(buildings)
+#boxplot(perc.woody, main = 'Woody')
+#boxplot(perc.cleared, main = 'Cleared')
+boxplot(distance2bush, main='Distance to Bushes')
+boxplot(distance2tree, main ='Distance to Trees')
+```
+
+```{r, echo=FALSE}
+par(mfrow=c(1,1))
+list_A <- fire[c(-2:-16)]
+# pairs(list_A)
+list_B <- (cbind(burnt, list_A[1:6]))
+pairs(list_A[1:6])
+```
+
+```{r, echo=FALSE}
+# pairs(list_B)
+```
+
+# MODEL SELECTION USING AIC
+
+```{r, echo=FALSE, results='hide'}
+library(knitr)
+fit <- glm(burnt~., family=binomial, data=fire)
+AIC_1 <- step(fit)
+```
+
+```{r, echo=FALSE, results='hide'}
+fit <- glm(burnt~., family=binomial, data=list_A)
+summary(fit)
+AIC_2 <- step(fit)
+```
+
+```{r, echo=FALSE}
+kable(summary(AIC_1)$coeff, caption='Full Data Set')
+kable(summary(AIC_2)$coeff, caption='Subsetted Data')
+```
+
+_OBSERVATIONS ON AIC MODEL SELECTION 
+
+* The first table shows the AIC technique on the entire data set and it produces the following model.
+* Model Equation:  $$ burnt = ffdi + slope + topo + distance2tree + planted + 
+    perc.woody $$
+* The only coefficients in this model that are significant are plantedr and perc.woody 
+* The second table shows the results from running the AIC technique on subsetted data that only includes the variables that homeowners control.
+* Model Equation: $$ burnt = planted + perc.woody $$
+* The 2nd table shows that plantedr and perc.woody as being significant, i.e. the likelihood of your house being burnt increases by the log-odds of plantedr and perc.woody.  Still unclear how to best interpret my cofficients with GLM.
+
+_CONCLUSION:_ Using the AIC techinque over the entire data set or the subsetted data set produces models with the same coefficients being significant, i.e. plantedr and perc.wood.  I decided that subsetting the data was a bad move and will not doing it for the following model selection techniques: LASSO, Ridge and p-value.
+
+# MODEL SELECTION USING LASSO
+
+```{r, echo=FALSE, results='hide'}
+#######################################################
+#   LASSO
+#######################################################
+
+## alpha=0 gives ridge regression
+## alpha=1 gives lasso regression
+library(glmnet)
+## fit lasso (trying 100 different lambda values)
+lasso=glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nlambda=200)
+# plot(lasso,xvar="lambda",main="Lasso Regression Betas for Different Values of the Tuning Parameter")
+
+## use 10-fold crossvalidation to find the best lambda
+cv.lasso=cv.glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nfolds=10)
+
+## get lambda and best lasso fit
+lambda.lasso=cv.lasso$lambda.min
+lambda.lasso
+
+## getting cvmspe from best value of lambda
+cvmspe.lasso=min(cv.lasso$cvm)
+
+## some plots
+par(mfrow=c(1,2))
+plot(cv.lasso)
+abline(v=log(lambda.lasso))
+plot(lasso,xvar="lambda")
+abline(v=log(lambda.lasso))
+
+
+yhat.lasso=predict(cv.lasso,newx=data.matrix(fire[,-1]),s="lambda.min", type='response')
+mspe.lasso=mean((fire$burnt-yhat.lasso)^2)
+mspe.lasso
+
+coef(cv.lasso, s = "lambda.1se")
+```
+
+_OBSERVATIONS:_ 
+
+* Using the LASSSO technique I found the following two variables to be of significance: planted and perc.woody. The two graphs show how the tuning parameter lamba zeroes out everything excpet for planted and perc.woody.
+* Model Equation: $$ burnt = planted + perc.woody $$
+
+# MODEL SELECTION USING P-VALUE BASED VARIABLE SELECTION
+
+```{r, echo=FALSE, results='hide'}
+fit.poly <- glm(burnt~.+poly(distance2tree, 2), family=binomial, data=fire )
+```
+
+```{r, echo=FALSE}
+kable(summary(fit.poly)$coeff)
+```
+
+_OBSERVATIONS:_
+
+* In my exploratory data analysis I thought I noticed some of the data having a quadratic pattern, particularly the distance2tree variable.  I decided to try a GLM with a distance2tree as a polynomial and it turned out to be significant. 
+
+_CONCLUSION:_ The glm model has plantedr, perc.woody and distance2tree as being significant.  I think trees are very important!  If the tree is tall and it is burning, then its integrity could be at issue and fall and destroy/burn the hosue.
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+# MODEL SELECTION USING RIDGE REGRESSION
+#######################################################
+##
+## (3) ridge regression
+##
+#######################################################
+
+library(glmnet)
+## alpha=0 gives ridge regression
+## alpha=1 gives lasso regression
+
+## fit ridge (trying 100 different lambda values)
+rr=glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=0,nlambda=100)
+
+## use 10-fold crossvalidation to find the best lambda
+cv.rr=cv.glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=0,nfolds=10,nlambda=200)
+
+## getting cvmspe from best value of lambda
+cvmspe.rr=min(cv.rr$cvm)
+
+## get lambda and best rr fit
+lambda.rr=cv.rr$lambda.min
+lambda.rr
+
+## some plots
+
+plot(rr,xvar="lambda",main="Ridge Regression Betas for Different Values of the Tuning Parameter")
+abline(v=log(lambda.rr))
+
+
+#plot(betas.rr,betas.lm,xlim=c(-10,10),ylim=c(-10,10))
+#abline(0,1)
+
+yhat.rr=predict(cv.rr,s="lambda.min",newx=data.matrix(fire[,-1]), type='response')
+mspe.rr=mean((fire$burnt-yhat.rr)^2)
+mspe.rr
+
+coef(cv.rr, s = "lambda.1se")
+```
+
+* _OBSERVATION:_ I'm unsure how to pull out the ridge regression coefficients, but I was able to calculate the mspe and cvmspe to make comparison of all the models.
+
+# (2) MODEL PREDICTION
+
+```{r, results='hide', echo=FALSE}
+## set aside a test set (20% of data)
+n=length(fire$burnt)
+n.test=round(n*.2)
+n.train=n-n.test
+n.test
+n.train
+test.idx=sample(1:n,size=n.test)
+train.idx=(1:n)[-test.idx]
+train=fire[train.idx,]
+test=fire[test.idx,]
+```
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(burnt~.+poly(distance2tree, 2), family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$burnt[hold.out.idx]-y.pred)^2)
+}
+CVMSPE_P_value <- mean(cvmspe)
+CVMSPE_P_value
+
+fit=glm(burnt~.+poly(distance2tree, 2), family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.p_value=mean((test$burnt-y.pred)^2)
+
+```
+
+```{r, echo=FALSE, results='hide'}
+yhat.AIC=predict(AIC_1,newdata=test)
+mspe.AIC=mean((test$burnt-yhat.AIC)^2)
+mspe.AIC
+##
+## V-fold Cross Validation for AIC (to compare with RR / Lasso)
+##
+## divide training data into V equal groups
+n=nrow(train)
+V=10
+idx.group=rep(1:V,floor(n/V+1))
+idx.group=idx.group[1:n]
+idx.group=sample(idx.group)
+idx.group
+
+## cross-validation
+cvmspe=rep(NA,V)
+cv.best.models=list()
+for(v in 1:V){
+    idx.holdout=which(idx.group==v)
+    fit=step(glm(burnt~., family='binomial', data=train[-idx.holdout,]),trace=0)
+    cv.best.models[[v]] <- formula(fit)
+    yhat=predict(fit,newdata=train[idx.holdout,], type='response')
+    cvmspe[v]=mean((train$burnt[idx.holdout]-yhat)^2)
+}
+cvmspe
+# 2.79, 10.99
+cvmspe.AIC=mean(cvmspe)
+
+## best subsets (via AIC) for each CV group:
+cv.best.models
+## note how different they are!
+## AIC-based selection is "unstable" - small changes in the data
+##   can lead to significant changes in the results!
+```
+
+```{r, echo=FALSE, results='hide'}
+#############################################################
+##
+## (5) comparison of CVMSPE on training set and MSPE on test set
+##
+#############################################################
+
+
+##
+## compare CVMSPE
+##
+
+cvmspe.AIC
+cvmspe.rr
+cvmspe.lasso
+CVMSPE_P_value
+
+##
+## Comparison of MSPE on test set
+##
+
+mspe.AIC
+mspe.rr
+mspe.lasso
+mspe.p_value
+
+
+## table
+T=matrix(c(cvmspe.AIC,cvmspe.rr,cvmspe.lasso,CVMSPE_P_value,mspe.AIC,mspe.rr,mspe.lasso,mspe.p_value),ncol=2, nrow=4)
+rownames(T)=c("AIC","RR","Lasso",'GLM')
+colnames(T)=c("CVMSPE-Train","MSPE-Test")
+```
+
+```{r, echo=FALSE}
+kable(T)
+```
+
+* I compared four techniques: Lasso, AIC, Ridge and p-value selection, to arrive at proper parameters.  Running through the Test and Train sets I found that the Lasso Model had the best predicting power of the fours models.  I will use my Lasso model with perc.woody and planted as my predictor variables to investigate the  three proposals to deal with mitigating houses lost to fires.
+
+# (3) THREE PROPOSALS 
+
+## _Proposal A_ 
+Remove all Trees within 10 meters of the house
+
+## _Method:_ 
+I took the entire fire data set and found the variable distance2tree and recoded anything that was less than 10 as 10.  I ran the lasso through the cross validation again with the new fire data set
+
+## _Results:_ 
+I found the mean squared prediction error to be 0.1854609, which is slighly worse than our previous model's prediction error of 0.1583821.  The new Proposal tells us that 218 Houses will burn and 269 will not burn.  Therefore, we will save 56 houses from wildfire with this Proposal.
+
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+#######################################################
+
+detach(fire)
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+load("fire.Rdata")
+attach(fire)
+fire$distance2tree[fire$distance2tree<10]=10
+
+#library(glmnet)
+## fit lasso (trying 100 different lambda values)
+#lasso=glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nlambda=200)
+# plot(lasso,xvar="lambda",main="Lasso Regression Betas for Different Values of the Tuning Parameter")
+
+## use 10-fold crossvalidation to find the best lambda
+#cv.lasso=cv.glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nfolds=10)
+
+## get lambda and best lasso fit
+#lambda.lasso=cv.lasso$lambda.min
+#lambda.lasso
+
+## getting cvmspe from best value of lambda
+#cvmspe.lasso=min(cv.lasso$cvm)
+
+yhat.lasso=predict(cv.lasso,newx=data.matrix(fire[,-1]),s="lambda.min", type='response')
+mspe.lasso=mean((fire$burnt-yhat.lasso)^2)
+mspe.lasso
+
+# Creating prediction model based on new data set
+fit.sim <- as.data.frame(yhat.lasso)
+final <- cbind(fit.sim, fire[,-1] )
+names(final)[names(final)=="1"] <- "burnt"
+final$burnt[final$burnt<0.6]=0
+final$burnt[final$burnt>0.6]=1
+Q_a <- sum(final$burnt)
+Q_a
+```
+
+
+## _Proposal B:_ 
+Require any home with at least 50% woody vegetation within 40m of the house to remove vegetation until they only have 50% woody vegetation within 40m of their house.
+
+## _Method:_ 
+I took the entire fire data set and found the variable perc.woody and recoded anything that had perc.woody greater than 50% as just 50%.  I then ran the lasso model through the cross validation again with the new fire data set.
+
+## _Results:_ 
+I found the mean squared prediction error to be 0.1906117, which is slighly worse than our previous model's prediction error of 0.1583821.  The new Proposal tells us that 217 Houses will burn and 270 will not burn.  Therefore, we will save 57 houses from wildfire with this Proposal.
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+#######################################################
+
+detach(fire)
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+load("fire.Rdata")
+attach(fire)
+fire$perc.woody[fire$perc.woody>50]=50
+
+#library(glmnet)
+## fit lasso (trying 100 different lambda values)
+#lasso=glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nlambda=200)
+# plot(lasso,xvar="lambda",main="Lasso Regression Betas for Different Values of the Tuning Parameter")
+
+## use 10-fold crossvalidation to find the best lambda
+#cv.lasso=cv.glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nfolds=10)
+
+## get lambda and best lasso fit
+#lambda.lasso=cv.lasso$lambda.min
+#lambda.lasso
+
+## getting cvmspe from best value of lambda
+#cvmspe.lasso=min(cv.lasso$cvm)
+
+yhat.lasso=predict(cv.lasso,newx=data.matrix(fire[,-1]),s="lambda.min", type='response')
+mspe.lasso=mean((fire$burnt-yhat.lasso)^2)
+mspe.lasso
+
+# Creating prediction model based on new data set
+fit.sim <- as.data.frame(yhat.lasso)
+final <- cbind(fit.sim, fire[,-1] )
+names(final)[names(final)=="1"] <- "burnt"
+final$burnt[final$burnt<0.6]=0
+final$burnt[final$burnt>0.6]=1
+Q_b <- sum(final$burnt)
+Q_b
+```
+
+## _Proposal C:_ 
+Replant any "remnant" vegetation within 40m of all houses with identical "planted" vegetation.
+
+## _Method:_ 
+I took the entire fire data set and found the variable planted and recoded anything that had plnated as r and replaced with a p.  I then ran the lasso model through the cross validation again with the new fire data set.
+
+## _Results:_ 
+I found the mean squared prediction error to be 0.1854609, which is much worse than our previous model's prediction error of 0.1583821.  The new Proposal tells us that 162 Houses will burn and 325 will not burn.  Therefore, we will save 112 houses from wildfire with this Proposal.
+
+```{r, echo=FALSE, results='hide', warnings=FALSE, error=FALSE}
+#######################################################
+
+detach(fire)
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+load("fire.Rdata")
+attach(fire)
+fire$planted[fire$planted=='r']='p'
+
+#library(glmnet)
+## fit lasso (trying 100 different lambda values)
+#lasso=glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nlambda=200)
+# plot(lasso,xvar="lambda",main="Lasso Regression Betas for Different Values of the Tuning Parameter")
+
+## use 10-fold crossvalidation to find the best lambda
+#cv.lasso=cv.glmnet(x=data.matrix(fire[,-1]),y=as.numeric(fire[,1]),alpha=1,nfolds=10)
+
+## get lambda and best lasso fit
+#lambda.lasso=cv.lasso$lambda.min
+#lambda.lasso
+
+## getting cvmspe from best value of lambda
+#cvmspe.lasso=min(cv.lasso$cvm)
+
+yhat.lasso=predict(cv.lasso,newx=data.matrix(fire[,-1]),s="lambda.min", type='response')
+mspe.lasso=mean((fire$burnt-yhat.lasso)^2)
+mspe.lasso
+
+# Creating prediction model based on new data set
+
+fit.sim <- as.data.frame(yhat.lasso)
+final <- cbind(fit.sim, fire[,-1] )
+names(final)[names(final)=="1"] <- "burnt"
+final$burnt[final$burnt<0.6]=0
+final$burnt[final$burnt>0.6]=1
+Q_c <- sum(final$burnt)
+
+# Creating Table of Different Houses Burned and Saved based on Proposals
+A <- 487-Q_a 
+B <- 487-Q_b
+C <- 487-Q_c
+A_s <- 274 - Q_a
+B_s <- 274 - Q_b
+C_s <- 274 - Q_c
+
+
+```
+
+|                    | Proposal A      | Proposal B      | Proposal C     |
+| ------------------ |:---------------:| ---------------:|:--------------:|
+| Houses Burned      | `r Q_a`         | `r Q_b`         |  `r Q_c`       |
+| Houses Not Burned  | `r A`           | `r B`           |  `r C`         |
+| Houses Saved       | `r A_s`         | `r B_s`         |  `r C_s`       |  
+
+_CONCLUSION:_  I found the Lasso model with perc.woody and planted as predictor variables to be the best predictive model when compared to other models using the AIC technique, Ridge Regression and p-value variable selection.  I used the Lasso model to make predictions based on the 3 Proposals.  The above table gives us number of houses saved based on the Proposal A, B, C.  I found that Proposal C to have the most number of houses saved.  Therefore, I recommend that California implement Proposal C and remove any 'remnant' vegetation around houses.
+
+* I think there is something wrong with my MSPE for each proposal.  I thought I would get less error with the changing of the data set.

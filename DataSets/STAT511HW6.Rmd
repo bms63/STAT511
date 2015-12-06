@@ -1,0 +1,606 @@
+---
+title: "STAT511HW6"
+author: "Ben Straub"
+date: "November 5, 2015"
+output: pdf_document
+---
+
+
+# 1) MISTLETOE
+
+```{r, results=FALSE, echo=FALSE}
+rm(list = ls())
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+mis = read.csv("mistletoe.csv", sep=",")
+library(knitr)
+attach(mis)
+```
+
+# EXPLORATORY DATA ANALYSIS
+
+```{r, results="hide", echo=FALSE}
+str(mis)
+```
+
+```{r, results='hide', echo=FALSE}
+mis_NA <- subset(mis, !is.na(mis$infected.USU))
+# Subsetting data for MNDNR study
+mis_MNDNR <- mis[c(-17)]
+# Subsetting data for USU studay
+mis_USU <- mis_NA[c(-16)]
+# Subseeting out infected variables
+mis_FIN <- mis_NA[c(-16, -17)]
+# Identifies values that are the same
+accurate <- which(mis$infected.mndnr == mis$infected.USU)
+# False Positives
+false_pos <- subset(mis_NA, infected.mndnr==1 & infected.USU==0)
+# False Negatives
+false_neg <- subset(mis_NA, infected.mndnr==0 & infected.USU==1)
+# Subsetting out USU study
+# Subsetting data on presence of birds
+#mis_USU_1 <- subset(mis_USU, infected.USU == 1)
+# Subsetting data on absence of birds
+#mis_USU_0 <- subset(mis_USU, infected.USU == 0)
+```
+
+* 17 variables and 25431 Observations in the Mistletoe Data Set
+* 5 categorical variables: csize, cdense, usize, udense, phys
+* 196 complete cases from the USU survey data.
+* 103 infected values that match with infected values from the USU and MNDNR survey.
+* This would imply that the MNDNR only has a 52% successful identification rate of infected trees
+* 93 values that are coded as false-positive or false-negatives.
+* 8 values coded as false positive, i.e. MNDNR coded trees as finding an infection when it was not infected
+* 85 values coded as false negatives, i.e. MNDNR coded trees as not finding an infection when in fact there was an infection.
+
+# Analysis of the infected.MNDNR Response Variable of the Mistletoe Data Set
+
+```{r, results=FALSE, echo=FALSE}
+fit <- glm(infected.mndnr~., family=binomial, data=mis_MNDNR)
+#step(fit)
+kable(summary(fit)$coeff, digits = 5)
+```
+
+_OBSERVATIONS:_  I created a GLM with infected.mndnr as the response variable and   I found that variables _csize, usize, udense, si, phys, age, dbh, volume, height, dense, x and mortal_ to be of significance for this model.  There are also several coefficients that are negative.
+
+## Model Equation: 
+
+# Analysis of the infected.USU Response Variable as a Subset of the Mistletoe Data Set
+
+```{r, results=FALSE, echo=FALSE}
+fit <- glm(infected.USU~., family=binomial, data=mis_USU)
+kable(summary(fit)$coeff, digits = 5)
+```
+ 
+_OBSERVATIONS:_  We are assuming that the USU survey data is of more correctness than the MNDNR survey data.  This would imply that variables found in this GLM to be of great importance to predicting whether mistletoe is present or not present.  For this GLM I used infected.USU as the response variable and found that the variables _udense, si, phys, height, mortal and dense_ to be of significance for this model. 
+
+## Model Equation: 
+
+# Comparison of USU to MNDNR Data with an Error Term Response Variable
+
+* I created a new Error Term Response Variable that captures the difference between the identifcation of infection between the USU and MNDNR Surveys.  When the variable Error is coded as 1, then that represents that an error in the MNDRN survey data.  A coding of 0 in our error term means they are coded correctly.
+
+```{r, results=FALSE, echo=FALSE}
+# Creating a New Response Variable
+error <- abs(mis_NA$infected.mndnr - mis_NA$infected.USU)
+# Binding new variables to Subsetted Mistletoe Data
+mis_FIN <- cbind(mis_FIN, error)
+# Subsetted Data with mislabeled data
+# mis_mis <- subset(mis_USU, mislabeled==1)
+# 93 entries of mislabled data
+fit <- glm(error~., family=binomial, data=mis_FIN)
+```
+
+```{r, results=FALSE, echo=FALSE}
+kable(summary(fit)$coeff, digits = 5)
+```
+
+_OBSERVATIONS:_ I found the following variables to be of significance for determining if a tree was mislabled as infected or not infected from the MNDNR survery: Dense, Si, Phys, csize and height.
+
+## Model Equation: 
+
+# Analysis of False Positives
+
+```{r, results='hide', echo=FALSE}
+## To study false positives/negatives we will just create a new response using
+## for loops
+f.positive=matrix(data=0,nrow=196,ncol=1)
+for(i in 1:196)
+{
+  if(infected.USU[i]-infected.mndnr[i]==-1)
+  {
+    f.positive[i]=1
+  }
+}
+mistletoe.3=cbind(mis_NA[1:196,1:15],f.positive)
+
+fit.2=glm(f.positive~.,family=binomial,data=mistletoe.3)
+fit.2.AIC=step(fit.2)
+```
+
+```{r, echo=FALSE}
+
+kable(summary(fit.2.AIC)$coeff)
+```
+
+## Model Equation: 
+
+_OBSERVATIONS:_ There are only 8 false positives in the data set.  I used the USU data set coupled with the AIC function to whittle down the predictor variables and found that the variables that are significant are just _volume_.  It appears that Volume is significant in labeling a tree that is not actually infected as infected.
+
+# Analysis of False Negatives
+
+```{r, results='hide', echo=FALSE}
+## Same as above for false negatives
+f.negative=matrix(data=0,nrow=196,ncol=1)
+for(i in 1:196)
+{
+  if(infected.USU[i]-infected.mndnr[i]==1)
+  {
+    f.negative[i]=1
+  }
+}
+
+mistletoe.4=cbind(mis_NA[1:196,1:15],f.negative)
+
+fit.3=glm(f.negative~.,family=binomial,data=mistletoe.4)
+fit.3.AIC=step(fit.3)
+```
+
+```{r, echo=FALSE}
+
+kable(summary(fit.3.AIC)$coeff)
+```
+
+## Model Equation:
+
+_OBSERVATIONS:_ The False Negative GLM gave the following variables as significant: csize, si, phys, height, dense and x.  The False Negatives are where the MNDNR did not observe the actual mistletoe when in fact it was there.  Folks out in the field should pay attention to the predictor variables found to be significant in this model to not mis-identify infected tree as not infected.
+
+# 2)  Categorical versus Continuous Predictor Variables for Mistletoe
+
+```{r, results=FALSE, echo=FALSE}
+rm(list = ls())
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+mis = read.csv("mistletoe.csv", sep=",")
+library(knitr)
+attach(mis)
+```
+
+```{r, results='hide', echo=TRUE}
+# Subsetting data for MNDNR study
+mis_MNDNR <- mis[c(-17)]
+## set aside a test set (20% of data)
+n=length(mis_MNDNR$infected.mndnr)
+n.test=round(n*.2)
+n.train=n-n.test
+n
+n.test
+n.train
+test.idx=sample(1:n,size=n.test)
+train.idx=(1:n)[-test.idx]
+train=mis_MNDNR[train.idx,]
+test=mis_MNDNR[test.idx,]
+```
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+phys+si+udense+usize+cdense+csize"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+phys+si+udense+usize+cdense+csize"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_ms1 <- mspe.test
+cont_cv1 <- mean(cvmspe)
+diff_1 <- abs(cont_ms1 - cont_cv1)
+```
+
+<!-- One Factor Variable --> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+udense+usize+cdense+csize"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+udense+usize+cdense+csize"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF <- mspe.test
+cont_cvF <- mean(cvmspe)
+diff_F <- abs(cont_msF - cont_cvF)
+```
+
+<!-- Two Factor Variables --> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+cdense+csize"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+cdense+csize"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF2 <- mspe.test
+cont_cvF2 <- mean(cvmspe)
+diff_F2 <- abs(cont_msF2 - cont_cvF2)
+```
+
+<!-- Three Factor Variables --> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+factor(usize)+cdense+csize"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+factor(usize)+cdense+csize"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF3 <- mspe.test
+cont_cvF3 <- mean(cvmspe)
+diff_F3 <- abs(cont_msF3 - cont_cvF3)
+```
+
+<!-- Three Factor Variables but Usize is not a Factor--> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+factor(cdense)+csize"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+factor(cdense)+csize"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF3_a <- mspe.test
+cont_cvF3_a <- mean(cvmspe)
+diff_F3_a <- abs(cont_msF3_a - cont_cvF3_a)
+```
+
+<!-- Four Factor Variables but usize is not factor--> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+factor(cdense)+factor(csize)"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+factor(cdense)+factor(csize)"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF4 <- mspe.test
+cont_cvF4 <- mean(cvmspe)
+diff_F4 <- abs(cont_msF4 - cont_cvF4)
+```
+
+<!-- Five Factor Variables --> 
+
+```{r, results='hide', echo=FALSE, warning=FALSE}
+##specify a "formula" - try different orders of polynomial
+form="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+factor(usize)+factor(cdense)+factor(csize)"
+##
+
+## randomly divide the data into V equal parts
+V=10
+
+cvmspe=rep(NA,V)
+cv.idx=as.numeric(matrix(1:V,nrow=n.train,ncol=1))
+cv.idx
+## randomly assign data points to each of V parts
+cv.idx=sample(cv.idx)
+
+## loop through, holding out one set of data at each point
+for(i in 1:V){
+    hold.out.idx=which(cv.idx==i)
+    fit=glm(form, family="binomial", data=train[-hold.out.idx,])
+    y.pred=predict(fit,newdata=train[hold.out.idx,], type='response')
+    cvmspe[i]=mean((train$infected.mndnr[hold.out.idx]-y.pred)^2)
+}
+mean(cvmspe)
+
+form.best="infected.mndnr~x+y+dense+mortal+volume+height+dbh+ba+age+factor(phys)+si+factor(udense)+usize+factor(cdense)+factor(csize)"
+fit=glm(form.best, family="binomial", data=train)
+y.pred=predict(fit,newdata=test, type='response')
+mspe.test=mean((test$infected.mndnr-y.pred)^2)
+
+```
+
+```{r, echo=FALSE}
+cont_msF5 <- mspe.test
+cont_cvF5 <- mean(cvmspe)
+diff_F5 <- abs(cont_msF5 - cont_cvF5)
+```
+
+| Tables        | MSPE            | CVMSPE          | Difference     |
+| ------------- |:---------------:| ---------------:|:--------------:|
+| All Cont.s    | `r cont_ms1`    | `r cont_cv1`    |  `r diff_1`    |
+| 1 Factor      | `r cont_msF`    | `r cont_cvF`    |  `r diff_F`    |
+| 2 Factor      | `r cont_msF2`   | `r cont_cvF2`   |  `r diff_F2`   |
+| 3 Factors     | `r cont_msF3`   | `r cont_cvF3`   |  `r diff_F3`   |
+| 3 Factors A   | `r cont_msF3_a` | `r cont_cvF3_a` |  `r diff_F3_a` |
+| 4 Factors     | `r cont_msF4`   | `r cont_cvF4`   |  `r diff_F4`   |
+| 5 Factors     | `r cont_msF5`   | `r  cont_cvF5`  |  `r diff_F5`   |
+
+## Model Form: 
+
+_CONCLUSION:_ I played around with the factor variables adding in each factor to see what happens to the CVMSPE and MSPE.  The above form is how I added factors into the model, starting from left to right (not scientific).  I noticed that  making usize a factor did something to rate of difference between CVMSPE and MSPE.  I decided to leave it out for two vairations.  The alternative 3 Factor model has a better CVMSPE, then the one that included usize.  I kept on with my method and noticed that the 4 factor model has a much higher CVMSPE, then previous variations. I reintroduced usize back into the 5 factor model and it increased MSPE and CVMSPE.  In conclusion, it appears that a model with three factors in it, which are phys, udense and cdense, prodcues a better model than models without any variables as factors or ones with less than 3 or more than 3.
+
+# 3) _COVARIANCE REGRESSION_ 
+
+```{r, results=FALSE, echo=FALSE}
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+rm(list = ls())
+load("dispersal.Rdata")
+library(knitr)
+library(car)
+```
+
+```{r, results=FALSE, echo=FALSE}
+str(dispersal)
+summary(dispersal)
+```
+
+* 300 Elk Observation in the Data Set
+* 202 Female Elk 
+* 98 Male Elk
+
+```{r, results=FALSE, echo=TRUE}
+
+##########################################
+## Numerical MLEs for Regression
+##########################################
+#trans <- d/sqrt(t)
+#fit <- lm(trans~t+factor(sex))
+
+## read in data
+## view the first few rows of the data
+head(dispersal)
+attach(dispersal)
+
+dis_M <- subset(dispersal, sex=="M")
+dis_F <- subset(dispersal, sex=="F")
+
+y_M = dis_M$d
+y_F = dis_F$d
+X_M=as.matrix(cbind(1,dis_M[,2:3]))
+X_F=as.matrix(cbind(1,dis_F[,2:3]))
+
+# MLE sigma for Men
+#normal.lik1<-function(theta,y,X){
+#mu<-theta[1]
+#sigma2<-theta[2]
+#n<-nrow(y)
+#logl<- -.5*n*log(2*pi) -.5*n*log(sigma2) -
+#(1/(2*sigma2))*sum((y-mu)**2)
+#return(-logl)
+#}
+
+#beta.start=c(0,0)
+#s2.start=1
+#out <- optim(c(beta.start,s2.start), normal.lik1, y=y_M, X=X_M, hessian=T)
+
+#out$par
+#OI<-solve(out$hessian)
+#se_M<-sqrt(diag(OI))
+
+# MLE sigma for Women
+#normal.lik1<-function(theta,y,X){
+#mu<-theta[1]
+#sigma2<-theta[2]
+#n<-nrow(y)
+#logl<- -.5*n*log(2*pi) -.5*n*log(sigma2) -
+#(1/(2*sigma2))*sum((y-mu)**2)
+#return(-logl)
+#}
+
+#out <- optim(c(0,1), normal.lik1, y=y_F, data=dis_F, hessian=T)
+
+#out$par
+#OI<-solve(out$hessian)
+#sigma_F<-diag(OI)
+#sigma_F
+
+############## START OF NEXT TRY ###########
+nll.reg <- function(beta.s2,y,X){
+    ## get parameters
+    p=length(beta.s2)-1
+    n=length(y)
+    beta=beta.s2[1:p]
+    s2=beta.s2[p+1]
+    ## calculate loglikelihood
+    loglik=sum(dnorm(y,X%*%beta,sqrt(s2),log=T))
+    ## return negative loglikelihood
+    -loglik
+}
+
+##
+## read in some data and estimate parameters using "lm"
+##
+
+y=dis_M$d
+X=cbind(1,dis_M$t)
+
+##
+## find MLE using "optim" numerical optimization
+##
+
+beta.start=c(0,0)
+s2.start=1
+out=optim(c(beta.start,s2.start),nll.reg,y=y,X=X,control=list(trace=10),hessian=T)
+
+## get parameter estimates (order is the same as in beta.s2)
+out$par
+
+## compare to estimates from lm:
+
+fit=lm(y~0+X)
+summary(fit)
+coef(fit)
+
+## get standard errors from optim
+H=out$hessian
+S=solve(H)
+se=sqrt(diag(S))
+se
+
+y=dis_F$d
+X=cbind(1,dis_F$t)
+
+##
+## find MLE using "optim" numerical optimization
+##
+
+beta.start=c(0,0)
+s2.start=1
+out=optim(c(beta.start,s2.start),nll.reg,y=y,X=X,control=list(trace=10),hessian=T)
+
+## get parameter estimates (order is the same as in beta.s2)
+out$par
+
+## compare to estimates from lm:
+
+fit=lm(y~0+X)
+summary(fit)
+coef(fit)
+
+## get standard errors from optim
+H=out$hessian
+S=solve(H)
+se=sqrt(diag(S))
+se
+```
+
+_CONCLUSION:_  I got really bogged down on this part of the assignment.  I tried to get my MLE code to work, but I failed at it a bunch.  Anyways, I put one iteration in and cut and pasted the code that was provided in the example.  I looked at an article at http://polisci2.ucsd.edu/dhughes/teaching/MLE_in_R.pdf to try and figure out my issues, but it was to no avail.  

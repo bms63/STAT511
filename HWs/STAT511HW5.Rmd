@@ -1,0 +1,164 @@
+---
+title: "STAT511HW5"
+author: "Ben Straub"
+date: "October 27, 2015"
+output: pdf_document
+---
+```{r}
+setwd("/Users/benStraub/Desktop/STAT511")
+rm(list = ls())
+smoking = read.csv("smoking.csv", sep=",")
+
+library(knitr)
+str(smoking)
+attach(smoking)
+
+pairs(smoking)
+kable(summary(smoking), digits=2)
+
+fit = lm(deaths~agecat+smokes+pyears, data=smoking)
+summary(fit)
+fit = lm(deaths~factor(agecat)+factor(smokes)+pyears, data=smoking)
+summary(fit)
+fit = lm(deaths~factor(agecat)+smokes+pyears, data=smoking)
+summary(fit)
+fit = lm(deaths~agecat+factor(smokes)+pyears, data=smoking)
+summary(fit)
+
+
+fit=glm(deaths~factor(agecat)+factor(smokes),offset=log(pyears),family="poisson",data=smoking)
+summary(fit)
+
+plot(fit)
+
+library(car)
+crPlots(fit)
+
+## Test for outliers
+library(car)
+outlierTest(fit)
+
+
+##
+## simulation study to see if resids are acceptable
+##
+
+## simulate data from the fitted model
+muhat=predict(fit,type="response")
+
+ysim=rpois(length(muhat),lambda=muhat)
+
+## fit the simulated data
+fit.sim=glm(ysim~factor(agecat)+factor(smokes),offset=log(pyears),family="poisson",data=smoking)
+summary(fit.sim)
+
+## residual plots
+plot(fit.sim)
+
+
+###############################################
+##
+## Predictions 
+##
+###############################################
+
+## predicted mean # of resp.deaths per year for 1000 people in a particular group
+##  by setting "arsenic=1:4" I am jointly calculating everything for all 4 arsenic groups
+##  This allows us to compare predicted respitory death rates across arsenic exposure levels
+
+## make a data frame with the desired predictor variables
+data=data.frame(pyears=1000,agegr=2,period=1,arsenic=1:4,start=1)
+data
+
+## get the mean and sd of the linear predictor eta for those predictor variables
+pred.mean=predict(fit,newdata=data,type="response",se=T)
+mu.hat=pred.mean$fit
+
+## CI bounds on linear predictor
+CI.up=mu.hat+1.96*pred.mean$se.fit
+CI.down=mu.hat-1.96*pred.mean$se.fit
+
+## CI on LINEAR PREDICTOR in table form
+cbind(CI.down,CI.up)
+
+## CI on MEAN # of resp.deaqths per year for 1000 people
+## Note: for Poisson regression, response function is mu=exp(eta)
+exp(cbind(CI.down,CI.up))
+```
+
+
+```{r}
+setwd("/Users/benStraub/Desktop/STAT511")
+rm(list = ls())
+load("isj.Rdata")
+names(isj)[names(isj)=="isj"] <- "birds"
+library(knitr)
+str(isj)
+attach(isj)
+pairs(isj)
+kable(summary(isj), digits=2)
+```
+
+## Exploratory Data Analysis
+
+* The Island Scrub Jay Data Set has 5,265 observations and 6 Variables
+* I renamed the Variable isj as birds.
+* Variables: birds, x, y, elev, forest, chap
+* The birds Variable is a coded as 0 for abscence of birds and 1 for presence of birds.
+* There appears to be a lot of NAs in the data set!!
+
+```{r}
+head(isj)
+tail(isj, n= 10)
+# Subsetting data on presence of birds
+isj.sub_1 <- subset(isj, birds == 1)
+# Subsetting data on absence of birds
+isj.sub_0 <- subset(isj, birds == 0)
+isj.sub_0_1 <- isj[complete.cases(isj),]
+```
+
+* Upon further examination of the data set I found that there was only 303 complete cases of Data.
+* The Data has 38 entries for the presences of birds
+* The Data has 265 entries for the absence of birds.
+
+
+```{r}
+fit=lm(birds~x+y+elev+forest+chap, data=isj.sub_1)
+kable(summary(fit)$coef, digits=15)
+
+fit=lm(birds~x+y+elev+forest+chap, data=isj.sub_1)
+kable(summary(fit)$coef, digits=15)
+
+fit=glm(birds~.,family=binomial(link="probit"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~.,family=binomial(link="logit"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~.,family=poisson(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~.,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~.,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~elev+forest+chap,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~forest+chap,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~forest,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~chap,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+fit=glm(birds~chap+x+y,family=binomial(link="log"),data=isj.sub_0_1)
+summary(fit)
+```
+
+##  Creates the Map
+
+```{r, echo=FALSE}
+plot(isj[,2:3],type="n",main="Elevation",asp=1)
+na.idx=which(is.na(isj$elev))
+elev.star=isj$elev[-na.idx]
+norm.elev=(elev.star-min(elev.star))/(max(elev.star)-min(elev.star))
+points(isj[-na.idx,2:3],pch=20,col=grey(1-norm.elev))
+points(isj[1:307,2:3],pch=4,col="red")
+```
+

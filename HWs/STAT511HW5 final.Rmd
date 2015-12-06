@@ -1,0 +1,316 @@
+---
+title: "STAT511HW5"
+author: "Ben Straub"
+date: "October 27, 2015"
+output: pdf_document
+---
+
+
+# _SMOKING_
+
+## Exploratory Data Analysis
+
+```{r, echo=FALSE, comment=NA}
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+rm(list = ls())
+smoking = read.csv("smoking.csv", sep=",")
+
+library(knitr)
+str(smoking)
+attach(smoking)
+
+pairs(smoking)
+#kable(summary(smoking), digits=2)
+```
+
+## _OBSERVATIONS:_
+
+* It looks like there are two relationships going on between agecategories and person years
+* Several of the variables have relationships with each other that look to have two different categories.
+* Inspection of the observations I see that the age categories coded as smokers have a higher amount of deaths than the age categories who do not smoke.
+* This makes sense as scientifically you would expect to find people who do not smoke to have a different life trend then people who do smoke.
+* I will attempt to fit a model that has deaths as the response variable and agecats, smokes and pyears as predictor variables.  I will report one Linear Model, but I did investigate several variations of the Linear Model.  I will also code Agecats and smokes as factor variables.
+* I learned later that coding them as factors was a bad move, especially as age categories has an ordering property to it, which is very important!
+
+```{r, echo=TRUE}
+fit = lm(deaths~factor(agecat)+factor(smokes)+pyears, data=smoking)
+# summary(fit)
+fit = lm(deaths~factor(agecat)+smokes+pyears, data=smoking)
+# summary(fit)
+fit = lm(deaths~agecat+factor(smokes)+pyears, data=smoking)
+kable(summary(fit)$coeff, digits = 5)
+```
+
+## I tried to fit 3 Linear Models and found the third model to have the most variables with significant values, i.e. one variable smokes.
+
+$$ Model Equation: $$
+
+## Residuals Diagnostics of Linear Model 
+
+```{r, echo=FALSE}
+# Historgram of Residuals
+par(mfrow=c(1,2))
+res=fit$resid
+hist(res, main = "Histogram of Residuals")
+
+# Heteroscadacity
+yhat=fit$fitted
+res=fit$res
+plot(yhat,res, main="Predicted Versus Residuals")
+abline(h=0, col="blue", lwd=3)
+```
+
+```{r, echo=FALSE}
+#Check for Normality
+qqnorm(res)
+qqline(res)
+
+#partial residual plots
+library(car)
+crPlots(fit)
+```
+
+## _CONCLUSION:_  The Linear Model is not a good fit for the Smoking Data Set.  We do see a nice normally distributed histogram of residuals, but the residuals plotted against the yhats shows heteroscadacity and the QQ-plot violates our normal modeling assumptions with its tails..  Also, the Residulas plotted against the Yhats shows that there is a clustering of data, which is an incidation that something else is going on in the Data.  The component Residuals Plots also show us a non-linear relationship between the variables.  Therefore, we can definitively conclude that the Linear Model is a poor fit for the Smoking Data.  Onward to GLMs!
+
+## Generalized Linear Model for the Smoking Data Set.
+
+$$ Model Equation: $$
+
+```{r, echo=FALSE}
+
+fit=glm(deaths~agecat+smokes,offset=log(pyears),family="poisson",data=smoking)
+#summary(fit)
+kable(summary(fit)$coeff, digits = 5)
+#kable(summary(smoking), digits=2)
+```
+
+## _OBSERVATIONS:_ 
+*  The new Generalized Linear Model is an excellent fit for the Data.  The model's summary of z-scores shows that the variables agecats and smokes are good predictors for the response variable death.  
+*  We can now interpret the model.  The GLM shows us that as a person ages and smokes a multiplcative effect occurs in the model on their chance of death.  A person who does not smoke still has a multiplicative effect, but to a lesser degree as smoking does not increase their chance of dying in the model.  Sadly, the older you get the chances of you dying increases whether you smoke or don't smoke...but smoking increases that rate!
+
+## Residual Diagnostics for GLM of Smoking Data
+
+```{r, echo=FALSE}
+plot(fit)
+
+library(car)
+crPlots(fit)
+## Test for outliers
+# library(car)
+# outlierTest(fit)
+```
+
+## _OBSERVATIONS:_ The QQ-Plot looks much better for the GLM then my previous LM and the graph of the residuals vs fitted does not show heteroscadacity nor does it show the clustering of data seen in the previous LM.  The Component Residuals of the Data show a linear trend as well between the variables and residuals.  We will compare a simulation of data versus our smoking data set to see if we can gain any more insight into the current GLM model.
+
+## Model Simulation
+
+```{r, echo=FALSE}
+##
+## simulation study to see if resids are acceptable
+##
+
+## simulate data from the fitted model
+muhat=predict(fit,type="response")
+
+ysim=rpois(length(muhat),lambda=muhat)
+
+## fit the simulated data
+fit.sim=glm(ysim~agecat+smokes,offset=log(pyears),family="poisson",data=smoking)
+
+## residual plots
+plot(fit.sim)
+```
+
+## _OBSERVATIONS:_ The Simulated Model's Residuals are comparable to the GLM that I created for the smoking data.  
+
+## Confidence Intervals for Generalized Linear Model of Smoking Data
+
+```{r, echo=FALSE, comment=NA}
+## make a data frame with the desired predictor variables
+data=data.frame(pyears=1000,agecat=3,smokes=1)
+data
+
+## get the mean and sd of the linear predictor eta for those predictor variables
+pred.mean=predict(fit,newdata=data,type="link",se=T)
+mu.hat=pred.mean$fit
+
+## CI bounds on linear predictor
+CI.up=mu.hat+1.96*pred.mean$se.fit
+CI.down=mu.hat-1.96*pred.mean$se.fit
+
+## CI on LINEAR PREDICTOR in table form
+cbind(CI.down,CI.up)
+
+## CI on MEAN # of resp.deaqths per year for 1000 people
+## Note: for Poisson regression, response function is mu=exp(eta)
+exp(cbind(CI.down,CI.up))
+```
+
+```{r, echo=FALSE}
+## make a data frame with the desired predictor variables
+data=data.frame(pyears=1000,agecat=3,smokes=0)
+data
+
+## get the mean and sd of the linear predictor eta for those predictor variables
+pred.mean=predict(fit,newdata=data,type="link",se=T)
+mu.hat=pred.mean$fit
+
+## CI bounds on linear predictor
+CI.up=mu.hat+1.96*pred.mean$se.fit
+CI.down=mu.hat-1.96*pred.mean$se.fit
+
+## CI on LINEAR PREDICTOR in table form
+cbind(CI.down,CI.up)
+
+## CI on MEAN # of resp.deaqths per year for 1000 people
+## Note: for Poisson regression, response function is mu=exp(eta)
+exp(cbind(CI.down,CI.up))
+```
+
+## _OBSERVATIONS:_ Upon examination of the data and the confidence intervals I calculated for my model I noticed something strange.  The confidence intervals for death is 5.06 to 5.96, which seems off.  Taking the total pyears for a person who smokes in agecat 3 and dividing it by 1000 we get 28.612.  Taking the corresponding total deaths, 206 and dividing it by 28.612 we get 7.19, which should lie in our confidence interval, but sadly 7.19 is not in our confidence interval.  The same logic applies for the confidence interval for Non-Smokers in agecat 3.  Something is wrong with the model as these values should be inside our confidence intervals.  Perhaps, using a Polynomial would have made the model a better fit and procduced better confidence intervals.
+
+# _ISLAND SCRUB JAY_
+
+```{r, echo=FALSE, comment=NA}
+setwd("/Users/benStraub/Desktop/STAT511/DataSets")
+rm(list = ls())
+load("isj.Rdata")
+names(isj)[names(isj)=="isj"] <- "birds"
+library(knitr)
+library(car)
+str(isj)
+attach(isj)
+```
+
+## Exploratory Data Analysis
+
+* The Island Scrub Jay Data Set has 5,265 observations and 6 Variables
+* Variables: isj, x, y, elev, forest, chap
+* I renamed the Variable isj as birds.
+* The birds Variable is a coded as 0 for abscence of birds and 1 for presence of birds.
+* There appears to be a lot of NAs in this data set!!
+
+```{r, echo=FALSE}
+head(isj)
+tail(isj, n= 10)
+kable(summary(isj), digits=2)
+# Subsetting data on presence of birds
+isj.sub_1 <- subset(isj, birds == 1)
+# Subsetting data on absence of birds
+isj.sub_0 <- subset(isj, birds == 0)
+# Subsetting data for both presence and abscence of birds
+isj.sub_0_1 <- isj[complete.cases(isj),]
+# Subsetting data to find the island
+isj_island_data_NA <- subset(isj, is.na(isj$birds))
+isj_island_data_NW <- subset(isj_island_data_NA, elev >= 0, forest >= 0, chap >= 0)
+isj_island_data_WA <- subset(isj_island_data_NA, is.na(isj_island_data_NA$elev))
+```
+
+* Upon further examination of the data set I found that there was only 303 complete cases of Data, i.e. 303 cases with elevation, chap, forest, x, y and birds filled out.
+* The Data has 38 entries for the presences of birds.
+* The Data has 265 entries for the absence of birds.
+* I also noticed that there is a relationship between the data entries with the NAs.
+* It looks like the island data has entries for forest, elevation and chapral and the water around the island has NAs for forest, elevation and chapral in it.  Makes sense. 
+
+```{r, echo=FALSE}
+pairs(isj.sub_0_1)
+```
+
+* I thought the pairs plot would be useful.  It seems like some of the data in the pairs plots have strange peaks in it and some have negative linear trends in it.  I'm unsure if this is a useful graph.
+
+# Simple Linear Model Fit
+
+* I did a simple linear model to just gain some intuition of the data set. 
+* I included all variables in the data set as well the entire data set.
+
+ $$ Model Equation: $$
+
+```{r, echo=FALSE}
+fit=lm(birds~x+y+elev+forest+chap, data=isj)
+kable(summary(fit)$coeff, digits= 5)
+```
+
+* The Linear Model gives us two variables of significance y and chap.
+* The Scrub Jay likes the Chaprel bush, especially during mating season, but this current linear model does not seem to be a good fit.  It would also be hard to make accurate predictions with such a weak model.  
+
+## Residual Diagnostics of Linear Model
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+res=fit$resid
+hist(res, main="Histogram of Residuals")
+
+#Check for Normality
+qqnorm(res)
+qqline(res)
+
+crPlots(fit)
+```
+
+* The histogram of the residuals are bimodal and do not demonstrate normailty.  However, it does demonstrate there are two seperate distribution occurring in the data.
+* The QQ-Plot also shows us two distributions.
+* I noticed that in the component residuals plots of the varibles that there is a lot of clustering of data points...perhaps the absence and presence of birds!!
+* A General Linear Model would be a better fit than the Linear Model we have been using.
+
+## General Linear Model for Island Scrub Jay Date Set
+
+```{r, echo=FALSE}
+fit=glm(birds~.,family=binomial(link="logit"),data=isj.sub_0_1)
+kable(summary(fit)$coeff, digits = 5)
+```
+
+## _OBSERVATIONS:_ The chap, forest and y variables are significant from this current general linear model.  The Results I got from the Residuals of my Simple Linear Model showed some clusering of the data set. I decided to include an interaction effect between x and y to see if this changed the model variables significance.
+
+## General Linear Model with Interaction Term
+
+```{r, echo=FALSE}
+# Change with an interaction term of xy
+fit=glm(birds~x+y+x*y+elev+forest+chap,family=binomial(link="logit"),data=isj.sub_0_1)
+kable(summary(fit)$coeff, digits=5)
+```
+
+## _OBSERVATIONS:_ The Model shows that chap, forest and y variables still being significant, but also has the x and xy varibles being significant.  This makes sense as  x and y are longitude and latitude coordinates for the island.  The model with the Interaction Term is a marked improvment from the previous model.  However, the map below has the island with blue dots representing observed sitings of scrub jay and red dots showing the absence of scrub jays.  I noticed that some of the observed data points might have a polynomial trend to them.  I'm unsure if I can go off a gut hunch or if I needed to prove it using prp plots???  On my hunch and some insight provided by Ben Lee, I decided to build another model with chaparrel as a polynomial term of degree 2 to see if anything of significane changes.
+
+```{r, echo=FALSE}
+plot(isj[,2:3],type="n",main="Elevation",asp=1)
+na.idx=which(is.na(isj$elev))
+elev.star=isj$elev[-na.idx]
+norm.elev=(elev.star-min(elev.star))/(max(elev.star)-min(elev.star))
+points(isj[-na.idx,2:3],pch=20,col=grey(1-norm.elev))
+points(isj.sub_0[1:269,2:3],pch=20,col="red")
+points(isj.sub_1[1:24,2:3],pch=20,col="blue")
+```
+
+## General Liner Model with Interaction Term and Polynomial Term.
+
+```{r, echo=FALSE}
+fit=glm(birds~x+y+x*y+elev+forest+poly(chap,2),family=binomial(link="logit"),data=isj.sub_0_1)
+kable(summary(fit)$coeff, digits=5)
+```
+
+## _OBSERVATIONS:_ This new model has the same level of significane for each variable except that the forest variable has now become significant (although it is weak).  I believe (from my limited knowledge) that this is the best model to make a predicted probablility map for the Island Scrub Jay Data Set. This map will show that the presence of chapparel, forest and depending on the xy coordinates will increase the likelihood of finding island scrub jay on the island.
+
+```{r, echo=FALSE}
+newdata = isj_island_data_NW
+fit.sim <- predict(fit, newdata, type="response")
+fit.sim <- as.data.frame(fit.sim)
+#isj_island_data_NW <-isj_island_data_NW[!isj_island_data_NW$birds == 1, ]
+#isj_island_data_NW <-isj_island_data_NW[!isj_island_data_NW$birds == 0, ]
+final <- cbind(fit.sim, isj_island_data_NW[,2:6] )
+```
+
+##  Predicted Probability of Island Scrub Jay
+
+* The triangles indicate where sightings of scrub jay occurred.
+* The darker the gray the more likely you will find an island scrub jay.
+
+```{r, echo=FALSE}
+plot(isj[,2:3],type="n",main="Island Scrub Jay",asp=1)
+na.idx=which(is.na(isj$elev))
+elev.star=isj$elev[-na.idx]
+norm.elev=(elev.star-min(elev.star))/(max(elev.star)-min(elev.star))
+points(final$x, final$y, pch=20,col=gray(1-final$fit.sim))
+#points(isj.sub_0[1:269,2:3],pch=20,col="red")
+points(isj.sub_1[1:24,2:3],pch=6,col="blue")
+```
+
